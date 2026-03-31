@@ -9,7 +9,11 @@ import {
   ArrowDownRight,
   AlertTriangle,
   CheckCircle2,
-  Filter
+  Filter,
+  Edit3,
+  Trash2,
+  XCircle,
+  Save
 } from 'lucide-react';
 import { storage } from '../services/storage';
 import { Ingredient, StockLog } from '../types';
@@ -25,6 +29,15 @@ export default function Inventory({ branchId }: { branchId: string }) {
   const [adjustAmount, setAdjustAmount] = useState<number>(0);
   const [adjustReason, setAdjustReason] = useState('');
   const [showLogs, setShowLogs] = useState(false);
+  
+  // CRUD State
+  const [isEditingIngredient, setIsEditingIngredient] = useState<Ingredient | null>(null);
+  const [isAddingIngredient, setIsAddingIngredient] = useState(false);
+  const [newIngredient, setNewIngredient] = useState<Partial<Ingredient>>({
+    name: '',
+    unit: 'kg',
+    stock: 0
+  });
 
   useEffect(() => {
     if (!branchId) return;
@@ -71,6 +84,42 @@ export default function Inventory({ branchId }: { branchId: string }) {
     alert('Stok berhasil diperbarui!');
   };
 
+  const handleSaveIngredient = () => {
+    if (!newIngredient.name || !newIngredient.unit) return;
+
+    if (isEditingIngredient) {
+      storage.update('ingredients', isEditingIngredient.id, {
+        name: newIngredient.name,
+        unit: newIngredient.unit
+      });
+      alert('Bahan berhasil diperbarui!');
+    } else {
+      storage.add('ingredients', {
+        ...newIngredient,
+        branchId,
+        stock: newIngredient.stock || 0
+      });
+      alert('Bahan baru berhasil ditambahkan!');
+    }
+
+    setIsAddingIngredient(false);
+    setIsEditingIngredient(null);
+    setNewIngredient({ name: '', unit: 'kg', stock: 0 });
+  };
+
+  const handleDeleteIngredient = (id: string) => {
+    if (window.confirm('Apakah Anda yakin ingin menghapus bahan ini?')) {
+      storage.remove('ingredients', id);
+      alert('Bahan berhasil dihapus!');
+    }
+  };
+
+  const startEdit = (ing: Ingredient) => {
+    setIsEditingIngredient(ing);
+    setNewIngredient({ name: ing.name, unit: ing.unit, stock: ing.stock });
+    setIsAddingIngredient(true);
+  };
+
   const filteredIngredients = ingredients.filter(i => 
     i.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -92,7 +141,14 @@ export default function Inventory({ branchId }: { branchId: string }) {
             <History size={20} />
             <span>Riwayat Stok</span>
           </button>
-          <button className="bg-orange-500 text-white px-6 py-3 rounded-2xl font-bold shadow-lg shadow-orange-100 hover:bg-orange-600 transition-all flex items-center gap-2">
+          <button 
+            onClick={() => {
+              setIsEditingIngredient(null);
+              setNewIngredient({ name: '', unit: 'kg', stock: 0 });
+              setIsAddingIngredient(true);
+            }}
+            className="bg-orange-500 text-white px-6 py-3 rounded-2xl font-bold shadow-lg shadow-orange-100 hover:bg-orange-600 transition-all flex items-center gap-2"
+          >
             <Plus size={20} />
             <span>Tambah Bahan</span>
           </button>
@@ -135,8 +191,23 @@ export default function Inventory({ branchId }: { branchId: string }) {
                     <button 
                       onClick={() => setIsAddingStock(ing.id)}
                       className="p-3 bg-neutral-100 text-neutral-600 rounded-xl hover:bg-orange-500 hover:text-white transition-all shadow-sm"
+                      title="Update Stok"
                     >
                       <Plus size={20} />
+                    </button>
+                    <button 
+                      onClick={() => startEdit(ing)}
+                      className="p-3 bg-neutral-100 text-neutral-600 rounded-xl hover:bg-blue-500 hover:text-white transition-all shadow-sm"
+                      title="Edit Bahan"
+                    >
+                      <Edit3 size={20} />
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteIngredient(ing.id)}
+                      className="p-3 bg-neutral-100 text-neutral-600 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-sm"
+                      title="Hapus Bahan"
+                    >
+                      <Trash2 size={20} />
                     </button>
                   </div>
                 </div>
@@ -182,6 +253,89 @@ export default function Inventory({ branchId }: { branchId: string }) {
           </motion.div>
         )}
       </div>
+
+      {/* Add/Edit Ingredient Modal */}
+      <AnimatePresence>
+        {isAddingIngredient && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-[40px] w-full max-w-md overflow-hidden shadow-2xl"
+            >
+              <div className="p-8 text-center border-b border-neutral-100">
+                <h2 className="text-2xl font-black mb-2">
+                  {isEditingIngredient ? 'Edit Bahan Baku' : 'Tambah Bahan Baku'}
+                </h2>
+                <p className="text-neutral-500">Lengkapi detail bahan baku di bawah ini</p>
+              </div>
+
+              <div className="p-8 space-y-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-neutral-400 uppercase tracking-widest">Nama Bahan</label>
+                  <input 
+                    type="text" 
+                    placeholder="Contoh: Biji Kopi Arabica" 
+                    className="w-full p-4 bg-neutral-50 border border-neutral-200 rounded-2xl outline-none focus:ring-2 focus:ring-orange-500 transition-all"
+                    value={newIngredient.name}
+                    onChange={(e) => setNewIngredient({ ...newIngredient, name: e.target.value })}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-neutral-400 uppercase tracking-widest">Satuan</label>
+                    <select 
+                      className="w-full p-4 bg-neutral-50 border border-neutral-200 rounded-2xl outline-none focus:ring-2 focus:ring-orange-500 transition-all"
+                      value={newIngredient.unit}
+                      onChange={(e) => setNewIngredient({ ...newIngredient, unit: e.target.value })}
+                    >
+                      <option value="kg">Kilogram (kg)</option>
+                      <option value="gr">Gram (gr)</option>
+                      <option value="liter">Liter (l)</option>
+                      <option value="ml">Mililiter (ml)</option>
+                      <option value="pcs">Pieces (pcs)</option>
+                      <option value="box">Box</option>
+                    </select>
+                  </div>
+                  {!isEditingIngredient && (
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-neutral-400 uppercase tracking-widest">Stok Awal</label>
+                      <input 
+                        type="number" 
+                        placeholder="0" 
+                        className="w-full p-4 bg-neutral-50 border border-neutral-200 rounded-2xl outline-none focus:ring-2 focus:ring-orange-500 transition-all"
+                        value={newIngredient.stock}
+                        onChange={(e) => setNewIngredient({ ...newIngredient, stock: Number(e.target.value) })}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="p-8 bg-neutral-50 flex gap-4">
+                <button 
+                  onClick={() => {
+                    setIsAddingIngredient(false);
+                    setIsEditingIngredient(null);
+                  }}
+                  className="flex-1 py-4 font-bold text-neutral-500 hover:text-neutral-700"
+                >
+                  Batal
+                </button>
+                <button 
+                  onClick={handleSaveIngredient}
+                  disabled={!newIngredient.name}
+                  className="flex-[2] bg-orange-500 text-white py-4 rounded-2xl font-bold shadow-lg shadow-orange-100 hover:bg-orange-600 transition-all disabled:opacity-50"
+                >
+                  {isEditingIngredient ? 'Simpan Perubahan' : 'Tambah Bahan'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Adjust Stock Modal */}
       <AnimatePresence>
