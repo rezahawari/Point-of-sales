@@ -1,0 +1,5 @@
+{
+  "name": "CafeFlow POS",
+  "description": "A comprehensive Point of Sale system for cafes with multi-branch management, real-time KDS, stock opname, and self-ordering.",
+  "requestFramePermissions": ["camera", "geolocation"]
+}

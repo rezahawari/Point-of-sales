@@ -1,0 +1,111 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    // Collection: branches
+    // Fields: name (string), address (string), location (map)
+    //
+    // Collection: users
+    // Fields: name (string), email (string), role (string), branchId (string), photoUrl (string)
+    //
+    // Collection: ingredients
+    // Fields: name (string), unit (string), stock (number), branchId (string)
+    //
+    // Collection: products
+    // Fields: name (string), price (number), category (string), branchId (string), recipe (list)
+    //
+    // Collection: tables
+    // Fields: number (string), branchId (string), status (string)
+    //
+    // Collection: orders
+    // Fields: tableId (string), branchId (string), status (string), items (list), totalAmount (number), paymentMethod (string), createdAt (string), customerName (string)
+    //
+    // Collection: attendance
+    // Fields: userId (string), branchId (string), type (string), timestamp (string), location (map), photoUrl (string)
+    //
+    // Collection: stockLogs
+    // Fields: ingredientId (string), branchId (string), type (string), quantity (number), reason (string), timestamp (string)
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isOwner() {
+      return isAuthenticated() && (
+        getUserData().role == 'owner' || 
+        request.auth.token.email == "rezahawari19@gmail.com"
+      );
+    }
+
+    function isManager() {
+      return isAuthenticated() && getUserData().role == 'manager';
+    }
+
+    function isStaff() {
+      return isAuthenticated() && (getUserData().role in ['cashier', 'kitchen', 'waiter', 'manager', 'owner']);
+    }
+
+    function belongsToBranch(branchId) {
+      return isOwner() || (isAuthenticated() && getUserData().branchId == branchId);
+    }
+
+    function isValidString(val, min, max) {
+      return val is string && val.size() >= min && val.size() <= max;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /branches/{branchId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner();
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner() || (isAuthenticated() && request.auth.uid == userId);
+      allow update: if isOwner() || (isAuthenticated() && request.auth.uid == userId && request.resource.data.role == resource.data.role);
+    }
+
+    match /ingredients/{id} {
+      allow read: if belongsToBranch(resource.data.branchId);
+      allow write: if belongsToBranch(request.resource.data.branchId);
+    }
+
+    match /products/{id} {
+      allow read: if true; // Customers can see menu
+      allow write: if belongsToBranch(request.resource.data.branchId);
+    }
+
+    match /tables/{id} {
+      allow read: if true; // Customers can see table status
+      allow write: if belongsToBranch(request.resource.data.branchId);
+    }
+
+    match /orders/{id} {
+      allow read: if true; // Customers can track their orders
+      allow create: if true; // Customers can self-order
+      allow update: if belongsToBranch(resource.data.branchId) || (request.resource.data.status == 'cancelled' && resource.data.status == 'pending');
+    }
+
+    match /attendance/{id} {
+      allow read: if isOwner() || isManager();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+    }
+
+    match /stockLogs/{id} {
+      allow read: if belongsToBranch(resource.data.branchId);
+      allow create: if belongsToBranch(request.resource.data.branchId);
+    }
+  }
+}

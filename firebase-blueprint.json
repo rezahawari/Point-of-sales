@@ -1,0 +1,152 @@
+{
+  "entities": {
+    "Branch": {
+      "title": "Branch",
+      "description": "A cafe branch location",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "address": { "type": "string" },
+        "location": {
+          "type": "object",
+          "properties": {
+            "lat": { "type": "number" },
+            "lng": { "type": "number" }
+          }
+        }
+      },
+      "required": ["name", "address"]
+    },
+    "User": {
+      "title": "User",
+      "description": "App user (owner, manager, staff)",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["owner", "manager", "cashier", "kitchen", "waiter"] },
+        "branchId": { "type": "string" },
+        "photoUrl": { "type": "string" }
+      },
+      "required": ["name", "email", "role"]
+    },
+    "Ingredient": {
+      "title": "Ingredient",
+      "description": "Raw material for products",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "unit": { "type": "string" },
+        "stock": { "type": "number" },
+        "branchId": { "type": "string" }
+      },
+      "required": ["name", "unit", "branchId"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Menu item sold to customers",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "category": { "type": "string", "enum": ["food", "drink", "snack"] },
+        "branchId": { "type": "string" },
+        "recipe": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "ingredientId": { "type": "string" },
+              "quantity": { "type": "number" }
+            }
+          }
+        }
+      },
+      "required": ["name", "price", "category", "branchId"]
+    },
+    "Table": {
+      "title": "Table",
+      "description": "Dining table in a branch",
+      "type": "object",
+      "properties": {
+        "number": { "type": "string" },
+        "branchId": { "type": "string" },
+        "status": { "type": "string", "enum": ["available", "occupied"] }
+      },
+      "required": ["number", "branchId", "status"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Customer order",
+      "type": "object",
+      "properties": {
+        "tableId": { "type": "string" },
+        "branchId": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "preparing", "served", "paid", "cancelled"] },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "productId": { "type": "string" },
+              "productName": { "type": "string" },
+              "quantity": { "type": "number" },
+              "note": { "type": "string" },
+              "status": { "type": "string", "enum": ["pending", "preparing", "ready", "served"] },
+              "category": { "type": "string" }
+            }
+          }
+        },
+        "totalAmount": { "type": "number" },
+        "paymentMethod": { "type": "string", "enum": ["cash", "card", "qris", "unpaid"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "customerName": { "type": "string" }
+      },
+      "required": ["branchId", "status", "items", "totalAmount", "createdAt"]
+    },
+    "Attendance": {
+      "title": "Attendance",
+      "description": "Staff attendance record",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "branchId": { "type": "string" },
+        "type": { "type": "string", "enum": ["in", "out"] },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "location": {
+          "type": "object",
+          "properties": {
+            "lat": { "type": "number" },
+            "lng": { "type": "number" }
+          }
+        },
+        "photoUrl": { "type": "string" }
+      },
+      "required": ["userId", "branchId", "type", "timestamp"]
+    },
+    "StockLog": {
+      "title": "StockLog",
+      "description": "Log of stock movements",
+      "type": "object",
+      "properties": {
+        "ingredientId": { "type": "string" },
+        "branchId": { "type": "string" },
+        "type": { "type": "string", "enum": ["in", "out"] },
+        "quantity": { "type": "number" },
+        "reason": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ingredientId", "branchId", "type", "quantity", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/branches": { "schema": "Branch", "description": "Cafe branches" },
+    "/users": { "schema": "User", "description": "App users" },
+    "/ingredients": { "schema": "Ingredient", "description": "Raw materials" },
+    "/products": { "schema": "Product", "description": "Menu items" },
+    "/tables": { "schema": "Table", "description": "Tables" },
+    "/orders": { "schema": "Order", "description": "Customer orders" },
+    "/attendance": { "schema": "Attendance", "description": "Attendance records" },
+    "/stockLogs": { "schema": "StockLog", "description": "Stock movement logs" }
+  }
+}
